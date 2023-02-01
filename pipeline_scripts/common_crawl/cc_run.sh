@@ -18,10 +18,17 @@ python download_common_crawl.py \
   --num_proc=$NUM_PROC
 
 mkdir $OUTPUT_DIR/common_crawl_wet_downloads_cc
-for x in $OUTPUT_DIR/common_crawl_wet_downloads/*.gz; do
-  zcat $x | opencc -c s2twp.json | gzip > $OUTPUT_DIR/common_crawl_wet_downloads_cc/$(basename $x)
-  rm $x
-done
+
+find $OUTPUT_DIR/common_crawl_wet_downloads/ -iname "*.gz" > flist.txt
+
+cat << EOF > cc.sh
+#!/bin/bash
+zcat \$1 | opencc | gzip > $OUTPUT_DIR/common_crawl_wet_downloads_cc/\$(basename \$1)
+rm \$1
+EOF
+chmod +x ./cc.sh
+
+parallel -a flist.txt ./cc.sh {}
 
 rm -rf $OUTPUT_DIR/common_crawl_wet_downloads
 
@@ -30,13 +37,12 @@ python get_text_dataset_from_wet_downloads.py \
   --output_dataset_name=$OUTPUT_DIR/cc_raw \
   --num_proc=$NUM_PROC
 
-
 SPLITS="zh vi es ur ar hi pt en id eu bn ca fr"
 for SPLIT in $SPLITS; do
   python remove_wikipedia_urls.py \
-     --input_dataset_name=$OUTPUT_DIR/cc_raw \
+     --input_dataset_name=$OUTPUT_DIR/cc_raw/$SPLIT \
      --output_dataset_name=$OUTPUT_DIR/cc_no_wikipedia/$SPLIT \
-     --url_column=url --split=$SPLIT --num_proc=$NUM_PROC
+     --url_column=url --num_proc=$NUM_PROC
   python apply_bigscience_filters.py \
      --input_dataset_name=$OUTPUT_DIR/cc_no_wikipedia/$SPLIT \
      --output_dataset_name=$OUTPUT_DIR/cc_filtered/$SPLIT \
@@ -49,14 +55,14 @@ for SPLIT in $SPLITS; do
      --num_proc=$NUM_PROC
 done
 
-
+exit 0
 SPLITS="te kn ne as ml or gu mr"
 
 for SPLIT in $SPLITS; do
   python remove_wikipedia_urls.py \
-     --input_dataset_name=$OUTPUT_DIR/cc_raw \
+     --input_dataset_name=$OUTPUT_DIR/cc_raw/$SPLIT \
      --output_dataset_name=$OUTPUT_DIR/cc_no_wikipedia/$SPLIT \
-     --url_column=url --split=$SPLIT --num_proc=$NUM_PROC
+     --url_column=url --num_proc=$NUM_PROC
   ulimit -Sn 1000000 && python deduplicate.py \
      --input_dataset_name=$OUTPUT_DIR/cc_no_wikipedia/$SPLIT \
      --output_dataset_name=$OUTPUT_DIR/cc_olm/$SPLIT \
