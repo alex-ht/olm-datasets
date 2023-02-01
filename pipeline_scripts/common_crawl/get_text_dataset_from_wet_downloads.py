@@ -13,7 +13,7 @@ parser.add_argument("--download_dir", help="The directory of the downloaded WET 
 parser.add_argument("--output_dataset_name", help="The name of the Hugging Face dataset which will be saved upon completion of this program.", required=True)
 parser.add_argument("--num_proc", type=int, help="The number of processes to use, at a minimum.", required=True)
 parser.add_argument("--tmp_dir", default=".tmp_get_dataset_from_downloads", help="The directory to store temporary files. The directory will be deleted upon completion of this script. Defaults to .tmp_get_datasets_from_downloads.")
-parser.add_argument("--push_to_hub", action="store_true", help="Whether to push the Hugging Face dataset to the Hugging Face Hub after saving a copy to the disk.")
+#parser.add_argument("--push_to_hub", action="store_true", help="Whether to push the Hugging Face dataset to the Hugging Face Hub after saving a copy to the disk.")
 args = parser.parse_args()
 
 if path.exists(args.tmp_dir):
@@ -93,10 +93,13 @@ for ungoliant_pipeline_output_dir in ungoliant_pipeline_output_dirs:
 for p in processes:
     p.join()
 
-data_files = {language_id: [path.join(ungoliant_pipeline_output_dir, language_id + "_parquet", "*.parquet") for ungoliant_pipeline_output_dir in ungoliant_pipeline_output_dirs] for language_id in language_ids}
-ds = load_dataset("parquet", data_files=data_files)
-ds.save_to_disk(args.output_dataset_name)
+language_ids = "vi es ur ar hi pt en id eu bn ca fr te kn ne as ml or gu mr".split(" ")
+for language_id in language_ids:
+    data_files = {language_id: [path.join(ungoliant_pipeline_output_dir, language_id + "_parquet", "*.parquet") for ungoliant_pipeline_output_dir in ungoliant_pipeline_output_dirs]}
+    ds = load_dataset("parquet", data_files=data_files)
+    ds.save_to_disk(args.output_dataset_name)
+
 rmtree(args.tmp_dir)
 
-if args.push_to_hub:
-    ds.push_to_hub(args.output_dataset_name)
+#if args.push_to_hub:
+#    ds.push_to_hub(args.output_dataset_name)
