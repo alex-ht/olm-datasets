@@ -6,6 +6,10 @@ NUM_PROC=$(nproc --all)
 #           CC-MAIN-2021-25 CC-MAIN-2021-21 CC-MAIN-2021-17 CC-MAIN-2021-10 CC-MAIN-2021-04"
 #SAMPLING_RATIOS=$(printf '0.1 %.0s' {1..15})
 
+# /tmp 目錄可能會空間不足，所以要切換
+export TEMP=/home/ubuntu/disk/tmp
+# .cache/huggingface 也要確定空間足夠
+
 SNAPSHOTS="CC-MAIN-2022-49 CC-MAIN-2022-40 CC-MAIN-2022-33 CC-MAIN-2022-27 CC-MAIN-2022-21 CC-MAIN-2022-05"
 SAMPLING_RATIOS=$(printf '0.1 %.0s' {1..6})
 OUTPUT_DIR=olm-CC-MAIN-2022-sampling-ratio-olm-0.1
