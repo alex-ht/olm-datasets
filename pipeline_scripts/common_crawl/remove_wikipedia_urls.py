@@ -1,5 +1,6 @@
 from datasets import load_dataset, load_from_disk
 import argparse
+import re
 
 parser = argparse.ArgumentParser(description="Removes all examples from a Hugging Face dataset if they have a Wikipedia URL. This script is intened to be used if you eventually want to merge the dataset with a Wikipedia snapshot. In that case, examples from Wikipedia in this dataset are redundant.")
 parser.add_argument("--input_dataset_name", help="Input dataset name.", required=True)
@@ -22,7 +23,7 @@ else:
     else:
         ds = load_from_disk(args.input_dataset_name)[args.split]
 
-ds = ds.filter(lambda example: not example[args.url_column].startswith("https://en.wikipedia.org/wiki/"), num_proc=args.num_proc)
+ds = ds.filter(lambda example: not re.search(r"https://.*\.wikipedia\.org/wiki/", example[args.url_column]), num_proc=args.num_proc)
 
 ds.save_to_disk(args.output_dataset_name)
 
