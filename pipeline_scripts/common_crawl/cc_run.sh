@@ -1,14 +1,24 @@
 #!/bin/bash
 set -ex
 NUM_PROC=$(nproc --all)
+
+# 設定 cache 目錄
+mkdir -p tmp/datasets
+export HF_DATASETS_CACHE=$(readlink -f tmp/datasets)
+export TEMP=$(readlink -f tmp)
+
+function cleanup_cache {
+    rm -rf tmp
+    mkdir -p tmp/datasets
+}
+
+# 使用90%記憶體當datasets cache
+export HF_DATASETS_IN_MEMORY_MAX_SIZE=$(($(grep MemTotal /proc/meminfo | awk '{print $2}')*900))
+
 #SNAPSHOTS="CC-MAIN-2022-49 CC-MAIN-2022-40 CC-MAIN-2022-33 CC-MAIN-2022-27 CC-MAIN-2022-21 \
 #           CC-MAIN-2022-05 CC-MAIN-2021-49 CC-MAIN-2021-43 CC-MAIN-2021-39 CC-MAIN-2021-31 \
 #           CC-MAIN-2021-25 CC-MAIN-2021-21 CC-MAIN-2021-17 CC-MAIN-2021-10 CC-MAIN-2021-04"
 #SAMPLING_RATIOS=$(printf '0.1 %.0s' {1..15})
-
-# /tmp 目錄可能會空間不足，所以要切換
-export TEMP=/home/ubuntu/disk/tmp
-# .cache/huggingface 也要確定空間足夠
 
 SNAPSHOTS="CC-MAIN-2022-49 CC-MAIN-2022-40 CC-MAIN-2022-33 CC-MAIN-2022-27 CC-MAIN-2022-21 CC-MAIN-2022-05"
 SAMPLING_RATIOS=$(printf '0.1 %.0s' {1..6})
@@ -20,6 +30,8 @@ python download_common_crawl.py \
   --seed=666 \
   --download_dir=$OUTPUT_DIR/common_crawl_wet_downloads \
   --num_proc=$NUM_PROC
+
+cleanup_cache
 
 mkdir $OUTPUT_DIR/common_crawl_wet_downloads_cc
 
@@ -41,22 +53,27 @@ python get_text_dataset_from_wet_downloads.py \
   --output_dataset_name=$OUTPUT_DIR/cc_raw \
   --num_proc=$NUM_PROC
 
+cleanup_cache
+
 SPLITS="zh vi es ur ar hi pt en id eu bn ca fr"
 for SPLIT in $SPLITS; do
   python remove_wikipedia_urls.py \
      --input_dataset_name=$OUTPUT_DIR/cc_raw/$SPLIT \
      --output_dataset_name=$OUTPUT_DIR/cc_no_wikipedia/$SPLIT \
      --url_column=url --num_proc=$NUM_PROC
+  cleanup_cache
   python apply_bigscience_filters.py \
      --input_dataset_name=$OUTPUT_DIR/cc_no_wikipedia/$SPLIT \
      --output_dataset_name=$OUTPUT_DIR/cc_filtered/$SPLIT \
      --lang_id=$SPLIT --text_column=text --num_proc=$NUM_PROC
+  cleanup_cache
   ulimit -Sn 1000000 && python deduplicate.py \
      --input_dataset_name=$OUTPUT_DIR/cc_filtered/$SPLIT \
      --output_dataset_name=$OUTPUT_DIR/cc_olm/$SPLIT \
      --text_column=text \
      --remove_whole_example \
      --num_proc=$NUM_PROC
+  cleanup_cache
 done
 
 exit 0
